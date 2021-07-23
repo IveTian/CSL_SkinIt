@@ -1,13 +1,15 @@
 package customskinloader.loader;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.apache.commons.codec.Charsets;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang3.StringUtils;
+
+import com.google.common.collect.Iterables;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.authlib.GameProfile;
@@ -17,53 +19,16 @@ import com.mojang.authlib.properties.PropertyMap;
 import com.mojang.authlib.yggdrasil.response.MinecraftProfilePropertiesResponse;
 import com.mojang.authlib.yggdrasil.response.MinecraftTexturesPayload;
 import com.mojang.util.UUIDTypeAdapter;
+
 import customskinloader.CustomSkinLoader;
 import customskinloader.config.SkinSiteProfile;
-import customskinloader.plugin.ICustomSkinLoaderPlugin;
 import customskinloader.profile.ModelManager0;
 import customskinloader.profile.UserProfile;
 import customskinloader.utils.HttpRequestUtil;
-import org.apache.commons.codec.Charsets;
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang3.StringUtils;
+import customskinloader.utils.HttpRequestUtil.HttpRequest;
+import customskinloader.utils.HttpRequestUtil.HttpResponce;
 
-public class MojangAPILoader implements ICustomSkinLoaderPlugin, ProfileLoader.IProfileLoader {
-
-    @Override
-    public ProfileLoader.IProfileLoader getProfileLoader() {
-        return this;
-    }
-
-    @Override
-    public List<IDefaultProfile> getDefaultProfiles() {
-        return Lists.newArrayList(new Mojang(this));
-    }
-
-    public abstract static class DefaultProfile implements ICustomSkinLoaderPlugin.IDefaultProfile {
-        protected final MojangAPILoader loader;
-
-        public DefaultProfile(MojangAPILoader loader) {
-            this.loader = loader;
-        }
-
-        @Override
-        public void updateSkinSiteProfile(SkinSiteProfile ssp) {
-            ssp.type        = this.loader.getName();
-            ssp.apiRoot     = this.getAPIRoot();
-            ssp.sessionRoot = this.getSessionRoot();
-        }
-
-        public abstract String getAPIRoot();
-        public abstract String getSessionRoot();
-    }
-
-    public static class Mojang extends MojangAPILoader.DefaultProfile {
-        public Mojang(MojangAPILoader loader)    { super(loader); }
-        @Override public String getName()        { return "Mojang"; }
-        @Override public int getPriority()       { return 100; }
-        @Override public String getAPIRoot()     { return getMojangApiRoot(); }
-        @Override public String getSessionRoot() { return getMojangSessionRoot(); }
-    }
+public class MojangAPILoader implements ProfileLoader.IProfileLoader {
 
     @Override
     public UserProfile loadProfile(SkinSiteProfile ssp, GameProfile gameProfile) throws Exception {
@@ -93,9 +58,9 @@ public class MojangAPILoader implements ICustomSkinLoaderPlugin, ProfileLoader.I
         //Doc (https://wiki.vg/Mojang_API#Playernames_-.3E_UUIDs)
         Gson gson = new GsonBuilder().registerTypeAdapter(UUID.class, new UUIDTypeAdapter()).create();
 
-        HttpRequestUtil.HttpResponce responce = HttpRequestUtil.makeHttpRequest(
-            new HttpRequestUtil.HttpRequest(apiRoot + "profiles/minecraft")
-                .setCacheTime(600).setPayload(gson.toJson(Collections.singletonList(username)))
+        HttpResponce responce = HttpRequestUtil.makeHttpRequest(
+                new HttpRequest(apiRoot + "profiles/minecraft")
+                        .setCacheTime(-1).setPayload(gson.toJson(Collections.singletonList(username)))
         );
         if (StringUtils.isEmpty(responce.content))
             return null;
@@ -113,16 +78,16 @@ public class MojangAPILoader implements ICustomSkinLoaderPlugin, ProfileLoader.I
     //UUID -> Profile
     public static GameProfile fillGameProfile(String sessionRoot, GameProfile profile) {
         //Doc (http://wiki.vg/Mojang_API#UUID_-.3E_Profile_.2B_Skin.2FCape)
-        HttpRequestUtil.HttpResponce responce = HttpRequestUtil.makeHttpRequest(
-            new HttpRequestUtil.HttpRequest(sessionRoot + "session/minecraft/profile/"
-                + UUIDTypeAdapter.fromUUID(profile.getId())).setCacheTime(90));
+        HttpResponce responce = HttpRequestUtil.makeHttpRequest(
+                new HttpRequest(sessionRoot + "session/minecraft/profile/"
+                        + UUIDTypeAdapter.fromUUID(profile.getId())).setCacheTime(90));
         if (StringUtils.isEmpty(responce.content))
             return profile;
 
         Gson gson = new GsonBuilder()
-            .registerTypeAdapter(UUID.class, new UUIDTypeAdapter())
-            .registerTypeAdapter(PropertyMap.class, new PropertyMap.Serializer())
-            .create();
+                .registerTypeAdapter(UUID.class, new UUIDTypeAdapter())
+                .registerTypeAdapter(PropertyMap.class, new PropertyMap.Serializer())
+                .create();
         MinecraftProfilePropertiesResponse propertiesResponce = gson.fromJson(responce.content, MinecraftProfilePropertiesResponse.class);
         GameProfile newGameProfile = new GameProfile(propertiesResponce.getId(), propertiesResponce.getName());
         newGameProfile.getProperties().putAll(propertiesResponce.getProperties());
@@ -149,7 +114,7 @@ public class MojangAPILoader implements ICustomSkinLoaderPlugin, ProfileLoader.I
 
     @Override
     public boolean compare(SkinSiteProfile ssp0, SkinSiteProfile ssp1) {
-        return (!StringUtils.isNoneEmpty(ssp0.apiRoot) || ssp0.apiRoot.equalsIgnoreCase(ssp1.apiRoot)) || (!StringUtils.isNoneEmpty(ssp0.sessionRoot) || ssp0.sessionRoot.equalsIgnoreCase(ssp1.sessionRoot));
+        return true;
     }
 
     @Override
@@ -161,20 +126,14 @@ public class MojangAPILoader implements ICustomSkinLoaderPlugin, ProfileLoader.I
     public void init(SkinSiteProfile ssp) {
         //Init default api & session root for Mojang API
         if (ssp.apiRoot == null)
-            ssp.apiRoot = getMojangApiRoot();
+            ssp.apiRoot = "https://api.mojang.com/";
         if (ssp.sessionRoot == null)
-            ssp.sessionRoot = getMojangSessionRoot();
+            ssp.sessionRoot = "https://sessionserver.mojang.com/";
     }
 
-    // Prevent authlib-injector (https://github.com/yushijinhun/authlib-injector) from modifying these strings
     private static final String MOJANG_API_ROOT = "https://api{DO_NOT_MODIFY}.mojang.com/";
-    private static final String MOJANG_SESSION_ROOT = "https://sessionserver{DO_NOT_MODIFY}.mojang.com/";
 
     public static String getMojangApiRoot() {
         return MOJANG_API_ROOT.replace("{DO_NOT_MODIFY}", "");
-    }
-
-    public static String getMojangSessionRoot() {
-        return MOJANG_SESSION_ROOT.replace("{DO_NOT_MODIFY}", "");
     }
 }

@@ -3,32 +3,19 @@ package customskinloader.loader.jsonapi;
 import java.util.List;
 import java.util.Map;
 
-import com.google.common.collect.Lists;
-import customskinloader.CustomSkinLoader;
-import customskinloader.config.SkinSiteProfile;
-import customskinloader.loader.JsonAPILoader;
-import customskinloader.plugin.ICustomSkinLoaderPlugin;
-import customskinloader.profile.ModelManager0;
-import customskinloader.profile.UserProfile;
-import customskinloader.utils.HttpTextureUtil;
 import org.apache.commons.lang3.StringUtils;
 
-public class UniSkinAPI implements JsonAPILoader.IJsonAPI {
+import customskinloader.CustomSkinLoader;
+import customskinloader.config.SkinSiteProfile;
+import customskinloader.loader.JsonAPILoader.IJsonAPI;
+import customskinloader.profile.ModelManager0;
+import customskinloader.profile.UserProfile;
+import customskinloader.profile.ModelManager0.Model;
+import customskinloader.utils.HttpTextureUtil;
 
-    public static class SkinMe extends JsonAPILoader.DefaultProfile {
-        public SkinMe(JsonAPILoader loader) { super(loader); }
-        @Override public String getName()   { return "SkinMe"; }
-        @Override public int getPriority()  { return 500; }
-        @Override public String getRoot()   { return "http://www.skinme.cc/uniskin/"; }
-    }
-
+public class UniSkinAPI implements IJsonAPI {
     private static final String TEXTURES="textures/";
     private static final String SUFFIX=".json";
-
-    @Override
-    public List<ICustomSkinLoaderPlugin.IDefaultProfile> getDefaultProfiles(JsonAPILoader loader) {
-        return Lists.newArrayList(new SkinMe(loader));
-    }
 
     @Override
     public String toJsonUrl(String root, String username) {
@@ -53,7 +40,7 @@ public class UniSkinAPI implements JsonAPILoader.IJsonAPI {
         
         boolean hasSkin=false;
         for(String model:profile.model_preference){
-            ModelManager0.Model enumModel=ModelManager0.getEnumModel(model);
+            Model enumModel=ModelManager0.getEnumModel(model);
             if(enumModel==null||StringUtils.isEmpty(profile.skins.get(model)))
                 continue;
             if(ModelManager0.isSkin(enumModel))

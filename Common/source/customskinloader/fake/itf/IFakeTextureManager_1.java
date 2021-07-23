@@ -13,8 +13,4 @@ public interface IFakeTextureManager_1 {
     default Texture func_229267_b_(ResourceLocation textureLocation) {
         return (Texture) ((TextureManager) this).getTexture(textureLocation);
     }
-
-    default Texture getTexture(ResourceLocation textureLocation, Texture textureObj) {
-        return func_229267_b_(textureLocation);
-    }
 }

@@ -3,9 +3,9 @@ package customskinloader.forge;
 import java.util.Map;
 
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
+import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin.Name;
 
-@IFMLLoadingPlugin.Name("CustomSkinLoader")
-@IFMLLoadingPlugin.SortingIndex(-10)
+@Name("CustomSkinLoader")
 public class ForgePlugin implements IFMLLoadingPlugin {
 
     @Override
@@ -25,7 +25,6 @@ public class ForgePlugin implements IFMLLoadingPlugin {
 
     @Override
     public void injectData(Map<String, Object> data) {
-        TransformerManager.isDevelopmentEnvironment = !(boolean) data.get("runtimeDeobfuscationEnabled");
     }
 
     @Override

@@ -7,7 +7,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
@@ -27,11 +26,7 @@ public class HttpRequestUtil {
         public boolean loadContent = true;
         public boolean checkPNG = false;
 
-        /**
-         * Cache Time
-         * -1=No Cache  0=Always Cache  t=Default Cache Time(second)
-         */
-        public int cacheTime = 600;
+        public int cacheTime = 600;//-1=No Cache  0=Always Cache  t=Default Cache Time(second)
         public File cacheFile = null;//Default Cache File
 
         public HttpRequest(String url) {
@@ -98,9 +93,8 @@ public class HttpRequestUtil {
             }
             CustomSkinLoader.logger.debug("Try to request '" + request.url + (request.userAgent == null ? "'." : "' with user agent '" + request.userAgent + "'."));
             //Check Cache
-            if (StringUtils.isNotEmpty(request.payload) || CustomSkinLoader.config.forceDisableCache){
+            if (StringUtils.isNotEmpty(request.payload))
                 request.cacheTime = -1;//No Cache
-            }
             File cacheInfoFile = null;
             CacheInfo cacheInfo = new CacheInfo();
             if (request.cacheFile == null && request.cacheTime >= 0) {
@@ -209,12 +203,12 @@ public class HttpRequestUtil {
             }
             if (!request.loadContent)
                 return responce;
-            responce.content = new String(bytes, StandardCharsets.UTF_8);
+            responce.content = new String(bytes, "UTF-8");
             CustomSkinLoader.logger.debug("Content: " + responce.content);
             return responce;
 
         } catch (Exception e) {
-            CustomSkinLoader.logger.debug("Failed to request " + request.url + " (Exception: " + e.toString() + ")");
+            CustomSkinLoader.logger.debug("Failed to request (Exception: " + e.toString() + ")");
             return loadFromCache(request, new HttpResponce());
         }
     }
@@ -230,7 +224,7 @@ public class HttpRequestUtil {
     private static HttpResponce loadFromCache(HttpRequest request, HttpResponce responce, long expireTime) {
         if (request.cacheFile == null || !request.cacheFile.isFile())
             return responce;
-        CustomSkinLoader.logger.debug("Cache file found (Length: " + request.cacheFile.length() + " , Path: '" + request.cacheFile.getAbsolutePath() + "' , Expire: " + expireTime + ")");
+        CustomSkinLoader.logger.debug("Cache file found (Length: " + request.cacheFile.length() + " , Path: '" + request.cacheFile.getAbsolutePath() + "' , Expire: " + expireTime + "')");
         responce.fromCache = true;
         responce.success = true;
         if (!request.loadContent)
@@ -260,6 +254,7 @@ public class HttpRequestUtil {
         long expires = connection.getExpiration();
         if (expires > 0)
             return expires / 1000;
-        return TimeUtil.getUnixTimestampRandomDelay(cacheTime == 0 ? 2592000 : cacheTime);
+        return TimeUtil.getUnixTimestampRandomDelay(cacheTime == 0 ? 86400 : cacheTime);
+
     }
 }

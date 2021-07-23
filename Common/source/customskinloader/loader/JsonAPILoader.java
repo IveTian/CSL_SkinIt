@@ -2,22 +2,24 @@ package customskinloader.loader;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.util.List;
 
-import com.mojang.authlib.GameProfile;
-import customskinloader.CustomSkinLoader;
-import customskinloader.config.SkinSiteProfile;
-import customskinloader.plugin.ICustomSkinLoaderPlugin;
-import customskinloader.profile.UserProfile;
-import customskinloader.utils.HttpRequestUtil;
-import customskinloader.utils.HttpUtil0;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
-public class JsonAPILoader implements ICustomSkinLoaderPlugin, ProfileLoader.IProfileLoader {
+import com.mojang.authlib.GameProfile;
+
+import customskinloader.CustomSkinLoader;
+import customskinloader.config.SkinSiteProfile;
+import customskinloader.loader.jsonapi.*;
+import customskinloader.profile.UserProfile;
+import customskinloader.utils.HttpRequestUtil;
+import customskinloader.utils.HttpUtil0;
+import customskinloader.utils.HttpRequestUtil.HttpRequest;
+import customskinloader.utils.HttpRequestUtil.HttpResponce;
+
+public class JsonAPILoader implements ProfileLoader.IProfileLoader {
     
     public interface IJsonAPI {
-        List<IDefaultProfile> getDefaultProfiles(JsonAPILoader loader);
         String toJsonUrl(String root, String username);
         String getPayload(SkinSiteProfile ssp);
         UserProfile toUserProfile(String root, String json, boolean local);
@@ -27,51 +29,32 @@ public class JsonAPILoader implements ICustomSkinLoaderPlugin, ProfileLoader.IPr
         public int errno;
         public String msg;
     }
+    public enum Type{
+        CustomSkinAPI(new CustomSkinAPI()),
+        CustomSkinAPIPlus(new CustomSkinAPIPlus()),
+        UniSkinAPI(new UniSkinAPI()),
+        ElyByAPI(new ElyByAPI()),
+        GlitchlessAPI(new GlitchlessAPI());
+        public IJsonAPI jsonAPI;
+        Type(IJsonAPI jsonAPI){
+            this.jsonAPI=jsonAPI;
+        }
+    }
     
-    private final IJsonAPI jsonAPI;
-    public JsonAPILoader(IJsonAPI jsonAPI){
-        this.jsonAPI = jsonAPI;
+    private Type type;
+    public JsonAPILoader(Type type){
+        this.type=type;
     }
-
-    // === ICustomSkinLoaderPlugin ===
-
-    @Override
-    public ProfileLoader.IProfileLoader getProfileLoader() {
-        return this;
-    }
-
-    @Override
-    public List<IDefaultProfile> getDefaultProfiles() {
-        return this.jsonAPI.getDefaultProfiles(this);
-    }
-
-    public abstract static class DefaultProfile implements ICustomSkinLoaderPlugin.IDefaultProfile {
-        protected final JsonAPILoader loader;
-
-        public DefaultProfile(JsonAPILoader loader) {
-            this.loader = loader;
-        }
-
-        @Override
-        public void updateSkinSiteProfile(SkinSiteProfile ssp) {
-            ssp.type = this.loader.getName();
-            ssp.root = this.getRoot();
-        }
-
-        public abstract String getRoot();
-    }
-
-    // === IProfileLoader ===
     
     @Override
     public UserProfile loadProfile(SkinSiteProfile ssp, GameProfile gameProfile) throws Exception {
         String username=gameProfile.getName();
-        if (StringUtils.isEmpty(ssp.root)) {
+        if(StringUtils.isEmpty(ssp.root) && type!=Type.ElyByAPI){
             CustomSkinLoader.logger.info("Root not defined.");
             return null;
         }
         boolean local = HttpUtil0.isLocal(ssp.root);
-        String jsonUrl = this.jsonAPI.toJsonUrl(ssp.root, username);
+        String jsonUrl=type.jsonAPI.toJsonUrl(ssp.root, username);
         String json;
         if(local){
             File jsonFile = new File(CustomSkinLoader.DATA_DIR, jsonUrl);
@@ -81,7 +64,7 @@ public class JsonAPILoader implements ICustomSkinLoaderPlugin, ProfileLoader.IPr
             }
             json=IOUtils.toString(new FileInputStream(jsonFile), "UTF-8");
         }else{
-            HttpRequestUtil.HttpResponce responce=HttpRequestUtil.makeHttpRequest(new HttpRequestUtil.HttpRequest(jsonUrl).setCacheTime(90).setUserAgent(ssp.userAgent).setPayload(this.jsonAPI.getPayload(ssp)));
+            HttpResponce responce=HttpRequestUtil.makeHttpRequest(new HttpRequest(jsonUrl).setCacheTime(90).setUserAgent(ssp.userAgent).setPayload(type.jsonAPI.getPayload(ssp)));
             json=responce.content;
         }
         if(json==null||json.equals("")){
@@ -95,7 +78,7 @@ public class JsonAPILoader implements ICustomSkinLoaderPlugin, ProfileLoader.IPr
             return null;
         }
         
-        UserProfile p=this.jsonAPI.toUserProfile(ssp.root, json, local);
+        UserProfile p=type.jsonAPI.toUserProfile(ssp.root, json, local);
         if(p==null||p.isEmpty()){
             CustomSkinLoader.logger.info("Both skin and cape not found.");
             return null;
@@ -109,7 +92,7 @@ public class JsonAPILoader implements ICustomSkinLoaderPlugin, ProfileLoader.IPr
     }
     @Override
     public String getName() {
-        return this.jsonAPI.getName();
+        return type.jsonAPI.getName();
     }
     @SuppressWarnings("ResultOfMethodCallIgnored")
     @Override

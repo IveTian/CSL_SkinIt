@@ -1,7 +1,5 @@
 package customskinloader.config;
 
-import java.lang.reflect.Field;
-
 public class SkinSiteProfile {
     //Common
     public String name;
@@ -22,23 +20,61 @@ public class SkinSiteProfile {
     public String cape;
     public String elytra;
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder("{ ");
-        Field[] fields = SkinSiteProfile.class.getDeclaredFields();
-        boolean first = true;
-        for (Field field : fields) {
-            try {
-                Object value = field.get(this);
-                if (value == null) continue;
-                if (first) {
-                    first = false;
-                } else {
-                    sb.append(", ");
-                }
-                sb.append("\"").append(field.getName()).append("\": \"").append(value).append("\"");
-            } catch (Exception ignored) { }
-        }
-        return sb.append(" }").toString();
+    public static SkinSiteProfile createMojangAPI(String name) {
+        SkinSiteProfile ssp = new SkinSiteProfile();
+        ssp.name = name;
+        ssp.type = "MojangAPI";
+        return ssp;
+    }
+
+    public static SkinSiteProfile createCustomSkinAPI(String name, String root) {
+        SkinSiteProfile ssp = new SkinSiteProfile();
+        ssp.name = name;
+        ssp.type = "CustomSkinAPI";
+        ssp.root = root;
+        return ssp;
+    }
+
+    public static SkinSiteProfile creatCustomSkinAPIPlus(String name, String root) {
+        SkinSiteProfile ssp = new SkinSiteProfile();
+        ssp.name = name;
+        ssp.type = "CustomSkinAPIPlus";
+        ssp.root = root;
+        return ssp;
+    }
+
+    public static SkinSiteProfile createGlitchlessAPI(String name, String root) {
+        SkinSiteProfile ssp = new SkinSiteProfile();
+        ssp.name = name;
+        ssp.type = "GlitchlessAPI";
+        ssp.root = root;
+        return ssp;
+    }
+
+    public static SkinSiteProfile createUniSkinAPI(String name, String root) {
+        SkinSiteProfile ssp = new SkinSiteProfile();
+        ssp.name = name;
+        ssp.type = "UniSkinAPI";
+        ssp.root = root;
+        return ssp;
+    }
+
+    public static SkinSiteProfile createLegacy(String name, String skin, String cape, String elytra) {
+        SkinSiteProfile ssp = new SkinSiteProfile();
+        ssp.name = name;
+        ssp.type = "Legacy";
+        ssp.checkPNG = false;
+        ssp.skin = skin;
+        ssp.model = "auto";
+        ssp.cape = cape;
+        ssp.elytra = elytra;
+        return ssp;
+    }
+
+    public static SkinSiteProfile createElyByAPI(String name) {
+        SkinSiteProfile ssp = new SkinSiteProfile();
+        ssp.name = name;
+        ssp.type = "ElyByAPI";
+        return ssp;
     }
 }

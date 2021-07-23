@@ -4,16 +4,9 @@ Custom Skin Loader mod for Minecraft.
 It's a mod which can load skins and capes from any online source or from your local.
   
 ## Download  
-**由于发布周期的原因，从 GitHub Release 页面下载到的 CustomSkinLoader 可能已经过时，不一定能兼容最新的 Minecraft/Forge/Fabric，请访问 https://littlesk.in/csl-latest 获取最新的下载链接。**  
-**CustomSkinLoader which downloaded from GitHub Release page may have been outdated because of the release lifecycle, and may not be compatible with the latest Minecraft/Forge/Fabric, please check https://littlesk.in/csl-latest to get the latest download link.**
-
 Build Server : [CircleCI](https://circleci.com/gh/xfl03/MCCustomSkinLoader) & ~~[Infinity Studio CI](https://ci.infstudio.net/job/CustomSkinLoader/)~~   
 Release Page : [MCBBS](http://www.mcbbs.net/thread-269807-1-1.html) & [GitHub](https://github.com/xfl03/MCCustomSkinLoader/releases) & [CurseForge](https://minecraft.curseforge.com/projects/customskinloader)  
-
-## Contact Us
-[QQ Group](https://im.qq.com/): [651287593](https://jq.qq.com/?_wv=1027&k=vF16R5tg)  
-[Telegram](https://telegram.org/): [@customskinloader](https://t.me/customskinloader)
-
+  
 ## Feature  
 ### Support Plenty of Skin Load API and Customizable Skin Load List  
 Supported Skin Load APIs:  
@@ -59,7 +52,7 @@ By using this mod, you can see correct avatar of players in Spectator Menu rathe
   
 ## Default Load List  
 - [Mojang](http://www.minecraft.net/) (Mojang API)
-- [LittleSkin](https://littleskin.cn/) (CustomSkinAPI)  
+- [SkinIt](https://skinit.top/) (CustomSkinAPI)  
 - [Blessing Skin](http://skin.prinzeugen.net/) (CustomSkinAPI)
 - [ElyBy](http://docs.ely.by/) (ElyByAPI)
 - SkinMe (UniSkinAPI)  
@@ -72,10 +65,7 @@ It's not a good idea to refer to CustomSkinLoader's source code to develop your 
 It's recommended to use CustomSkinLoader for your server directly.  
 Furthermore, you can add your server to 'Default Load List'.  
 You can also use 'ExtraList' which makes it easier for users to add your server into load list.  
-
-## Development and Contribution
-See [CONTRIBUTING.md](CONTRIBUTING.md)
-
+  
 ## Copyright & LICENSE  
 ### Binary File  
 You could not modify binary file.  

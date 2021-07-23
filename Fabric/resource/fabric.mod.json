@@ -4,7 +4,7 @@
   "version": "${modFullVersion}",
 
   "name": "CustomSkinLoader",
-  "description": "Custom Skin Loader for Minecraft. Skin It! Special Edition.",
+  "description": "Custom Skin Loader for Minecraft with Skin It!",
   "authors": ["xfl03", "JLChnToZ"],
   "contact": {
     "homepage": "https://github.com/xfl03/MCCustomSkinLoader",
@@ -15,6 +15,9 @@
   
   "environment": "client",
   "mixins": [
-    "mixins.customskinloader.json"
+    {
+      "config": "mixins.customskinloader.json",
+      "environment": "client"
+    }
   ]
 }

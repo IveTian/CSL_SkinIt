@@ -1,7 +1,5 @@
 package customskinloader.forge.loader;
 
-import java.util.ArrayList;
-
 import customskinloader.forge.TransformerManager;
 import customskinloader.forge.transformer.FakeInterfacesTransformer;
 import customskinloader.forge.transformer.PlayerTabTransformer;
@@ -9,6 +7,7 @@ import customskinloader.forge.transformer.SkinManagerTransformer;
 import customskinloader.forge.transformer.SpectatorMenuTransformer;
 import customskinloader.forge.transformer.TileEntitySkullTransformer;
 import net.minecraft.launchwrapper.IClassTransformer;
+import net.minecraftforge.fml.common.asm.transformers.deobf.FMLDeobfuscatingRemapper;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -19,8 +18,7 @@ import org.objectweb.asm.tree.MethodNode;
 public class LaunchWrapper implements IClassTransformer {
     private static final TransformerManager.IClassTransformer[] CLASS_TRANSFORMERS = {
         new FakeInterfacesTransformer.MinecraftTransformer(),
-        new FakeInterfacesTransformer.ThreadDownloadImageDataTransformer(),
-        new FakeInterfacesTransformer.AbstractTextureTransformer(),
+        new FakeInterfacesTransformer.AbstractTextureTransfomer(),
         new FakeInterfacesTransformer.TextureTransformer(),
         new FakeInterfacesTransformer.TextureManagerTransformer()
     };
@@ -51,18 +49,15 @@ public class LaunchWrapper implements IClassTransformer {
         }
 
         //Transform ClassNode
-        cn = transformerManager.transform(cn, className);
-        ArrayList<MethodNode> methods = new ArrayList<>();
+        transformerManager.transform(cn);
         for (MethodNode mn : cn.methods) {
-            String mappedMethodName = TransformerManager.isDevelopmentEnvironment ? mn.name : TransformerManager.mapMethodName(cn.name, mn.name, mn.desc);
-            String mappedMethodDesc = TransformerManager.isDevelopmentEnvironment ? mn.desc : TransformerManager.mapMethodDesc(mn.desc);
-            methods.add(transformerManager.transform(cn, mn, className, mappedMethodName, mappedMethodDesc));
+            String methodName = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(obfClassName, mn.name, mn.desc);
+            String methodDesc = FMLDeobfuscatingRemapper.INSTANCE.mapMethodDesc(mn.desc);
+            transformerManager.transform(cn, mn, className, methodName, methodDesc);
         }
-        cn.methods.clear();
-        cn.methods.addAll(methods);
 
         //Parse Class Node to bytes
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
         cn.accept(cw);
         return cw.toByteArray();
     }

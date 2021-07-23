@@ -1,36 +1,63 @@
 /**
- * Gradle Script for Converting Mappings
- * Designed for Converting Mappings.
- * Converting Mappings: tsrg->srg
+ * Gradle Script for Remap
+ * Designed for remapping jar.
+ * Remap Jar: mcp<->srg<->notch
  */
 
 buildscript {
     repositories {
         mavenCentral()
+        maven {
+            name = "forge"
+            url = "http://files.minecraftforge.net/maven"
+        }
     }
     dependencies {
-        classpath "org.cadixdev:lorenz:0.5.7"
+        classpath 'net.md-5:SpecialSource:1.8.6'
+        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
     }
 }
 
-import org.cadixdev.lorenz.MappingSet
-import org.cadixdev.lorenz.io.srg.SrgWriter
-import org.cadixdev.lorenz.io.srg.tsrg.TSrgReader
+import net.md_5.specialsource.JarMapping
+import net.md_5.specialsource.JarRemapper
+import net.md_5.specialsource.provider.JarProvider
+import net.md_5.specialsource.provider.JointProvider
 
-static void tsrg2srg(File tsrg, File srg) {
-    if (!tsrg.exists()) return
-    if (!srg.parentFile.exists()) srg.parentFile.mkdirs()
-    MappingSet.create().with { set ->
-        tsrg.withReader "UTF-8", { reader ->
-            new TSrgReader(reader).read(set)
-        }
-        srg.withWriter "UTF-8", { writer ->
-            new SrgWriter(writer).write(set)
-        }
+
+void reobfSrgToNotch() {
+    def srgName = "${archivesBaseName}-${version}-srg.jar"
+    def notchName = srgName.replace('-srg', '')
+    if (config.srg_notch_map == null) {
+        //Default Map
+        def mcpName = srgName.replace('-srg', '-dev')
+        applySpecialSource(srgName, mcpName, getDefaultMap("srg-mcp"))
+        applySpecialSource(mcpName, notchName, getDefaultMap("mcp-notch"))
+    } else {
+        //Custom Map
+        applySpecialSource(srgName, notchName, config.srg_notch_map)
     }
-    srg.deleteOnExit()
+}
+
+void applySpecialSource(String inputName, String outputName, String mapFile) {
+    def mapping = new JarMapping()
+    def srgFile = file(mapFile)
+    def inputFile = file("build/libs/${inputName}")
+    def outputFile = file("build/libs/${outputName}")
+    def remapper = new JarRemapper(null, mapping)
+    def inputJar = net.md_5.specialsource.Jar.init(inputFile)
+    def inheritanceProviders = new JointProvider()
+    def jarProvider = new JarProvider(inputJar)
+    inheritanceProviders.add(jarProvider)
+    mapping.loadMappings(srgFile)
+    mapping.setFallbackInheritanceProvider(inheritanceProviders)
+    remapper.remapJar(inputJar, outputFile)
+}
+
+String getDefaultMap(String srgType) {
+    def mcpVersion = minecraft.mappings.replace('_', "/")
+    return System.getProperty('user.home') + "/.gradle/caches/minecraft/de/oceanlabs/mcp/mcp_${mcpVersion}/${config.forge_mc_version}/srgs/${srgType}.srg"
 }
 
 ext {
-    tsrg2srg = this.&tsrg2srg
+    reobfSrgToNotch = this.&reobfSrgToNotch
 }

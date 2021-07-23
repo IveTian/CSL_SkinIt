@@ -1,8 +1,7 @@
 package customskinloader.utils;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.util.ArrayList;
@@ -10,8 +9,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.mojang.authlib.GameProfile;
-import customskinloader.fake.itf.IFakeMinecraft;
+import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.IImageBuffer;
+import net.minecraft.client.renderer.ThreadDownloadImageData;
+import net.minecraft.client.renderer.texture.SimpleTexture;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.resources.SkinManager;
 import net.minecraft.util.ResourceLocation;
@@ -34,8 +36,40 @@ public class MinecraftUtil {
         return Minecraft.getMinecraft().getSkinManager();
     }
 
-    public static InputStream getResourceFromResourceLocation(ResourceLocation location) throws IOException {
-        return ((IFakeMinecraft) Minecraft.getMinecraft()).getResourceFromResourceLocation(location);
+    private static boolean is_1_15_plus = false;
+    private static Constructor<?> constructor = null;
+    public static SimpleTexture createThreadDownloadImageData(File cacheFileIn, String imageUrlIn, ResourceLocation textureResourceLocation, IImageBuffer imageBufferIn, MinecraftProfileTexture.Type textureType) {
+        if (constructor == null) {
+            Class<?> c;
+            try {
+                c = Class.forName("net.minecraft.client.renderer.texture.ThreadDownloadImageData", false, MinecraftUtil.class.getClassLoader()); // Forge 1.13
+            } catch (ClassNotFoundException e1) {
+                try {
+                    c = Class.forName("net.minecraft.client.renderer.texture.DownloadingTexture", false, MinecraftUtil.class.getClassLoader()); // Forge 1.14+
+                } catch (ClassNotFoundException e2) {
+                    c = ThreadDownloadImageData.class; // Forge 1.12- or Fabric or Vanilla
+                }
+            }
+            try {
+                constructor = c.getConstructor(File.class, String.class, ResourceLocation.class, boolean.class, Runnable.class); // For 1.15+
+                is_1_15_plus = true;
+            } catch (NoSuchMethodException e1) {
+                try {
+                    constructor = c.getConstructor(File.class, String.class, ResourceLocation.class, IImageBuffer.class); // For 1.15-
+                } catch (NoSuchMethodException e2) {
+                    throw new RuntimeException(e2);
+                }
+            }
+        }
+        try {
+            if (is_1_15_plus) {
+                return (SimpleTexture) constructor.newInstance(cacheFileIn, imageUrlIn, textureResourceLocation, textureType == MinecraftProfileTexture.Type.SKIN, imageBufferIn);
+            } else {
+                return (SimpleTexture) constructor.newInstance(cacheFileIn, imageUrlIn, textureResourceLocation, imageBufferIn);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
 
@@ -92,6 +126,10 @@ public class MinecraftUtil {
         return HttpUtil0.isLanServer(getStandardServerAddress());
     }
 
+    public static String getCurrentUsername() {
+        return Minecraft.getMinecraft().getSession().getProfile().getName();
+    }
+
     private final static Pattern MINECRAFT_CORE_FILE_PATTERN = Pattern.compile("^(.*?)/versions/([^\\/\\\\]*?)/([^\\/\\\\]*?).jar$");
 
     private static void testProbe() {
@@ -108,6 +146,27 @@ public class MinecraftUtil {
                 continue;
             minecraftVersion.add(m.group(2));
         }
+    }
+
+    public static boolean isCoreFile(URL url) {
+        return regexMatch(url, MINECRAFT_CORE_FILE_PATTERN);
+    }
+
+    private final static Pattern LIBRARY_FILE_PATTERN = Pattern.compile("^(.*?)/libraries/(.*?)/([^\\/\\\\]*?).jar$");
+
+    public static boolean isLibraryFile(URL url) {
+        return regexMatch(url, LIBRARY_FILE_PATTERN);
+    }
+
+    private static boolean regexMatch(URL url, Pattern p) {
+        Matcher m;
+        try {
+            m = p.matcher(URLDecoder.decode(url.getPath(), "UTF-8"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return m.matches();
     }
 
     public static String getCredential(GameProfile profile) {

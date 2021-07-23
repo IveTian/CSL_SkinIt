@@ -5,35 +5,18 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.ServiceLoader;
 
-import com.google.common.collect.Lists;
-import customskinloader.CustomSkinLoader;
-import customskinloader.loader.JsonAPILoader;
-import customskinloader.loader.LegacyLoader;
-import customskinloader.loader.MojangAPILoader;
-import customskinloader.loader.jsonapi.CustomSkinAPI;
-import customskinloader.loader.jsonapi.CustomSkinAPIPlus;
-import customskinloader.loader.jsonapi.ElyByAPI;
-import customskinloader.loader.jsonapi.GlitchlessAPI;
-import customskinloader.loader.jsonapi.UniSkinAPI;
 import org.apache.commons.io.FileUtils;
 
-public class PluginLoader {
-    public static final ICustomSkinLoaderPlugin[] DEFAULT_PLUGINS = new ICustomSkinLoaderPlugin[] {
-        new MojangAPILoader(),
-        new LegacyLoader(),
-        new JsonAPILoader(new CustomSkinAPI()),
-        new JsonAPILoader(new CustomSkinAPIPlus()),
-        new JsonAPILoader(new UniSkinAPI()),
-        new JsonAPILoader(new ElyByAPI()),
-        new JsonAPILoader(new GlitchlessAPI())
-    };
-    public static final ArrayList<ICustomSkinLoaderPlugin> PLUGINS = loadPlugins();
+import customskinloader.CustomSkinLoader;
+import customskinloader.loader.ProfileLoader;
 
-    private static ArrayList<ICustomSkinLoaderPlugin> loadPlugins() {
+public class PluginLoader {
+    public static HashMap<String, ProfileLoader.IProfileLoader> loadPlugins() {
         File pluginsDir = new File(CustomSkinLoader.DATA_DIR, "Plugins");
-        ArrayList<URL> urls = new ArrayList<>();
+        ArrayList<URL> urls = new ArrayList<URL>();
         if (!pluginsDir.isDirectory()) {
             pluginsDir.mkdirs();
         } else {
@@ -44,12 +27,13 @@ public class PluginLoader {
                 } catch (MalformedURLException ignored) {}
             }
         }
-        ArrayList<ICustomSkinLoaderPlugin> plugins = Lists.newArrayList(DEFAULT_PLUGINS);
-
         ServiceLoader<ICustomSkinLoaderPlugin> sl = ServiceLoader.load(ICustomSkinLoaderPlugin.class, new URLClassLoader(urls.toArray(new URL[0]), PluginLoader.class.getClassLoader()));
-        for (ICustomSkinLoaderPlugin plugin : sl) {
-            plugins.add(plugin);
+        HashMap<String, ProfileLoader.IProfileLoader> profileLoaders = new HashMap<String, ProfileLoader.IProfileLoader>();
+        for (ICustomSkinLoaderPlugin cslPlugin : sl) {
+            ProfileLoader.IProfileLoader profileLoader = cslPlugin.getProfileLoader();
+            profileLoaders.put(profileLoader.getName().toLowerCase(), profileLoader);
+            CustomSkinLoader.logger.info("Add profile loader: " + profileLoader.getName());
         }
-        return plugins;
+        return profileLoaders;
     }
 }

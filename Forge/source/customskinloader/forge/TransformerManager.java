@@ -1,26 +1,25 @@
 package customskinloader.forge;
 
+import java.io.File;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Supplier;
 
-import customskinloader.forge.platform.IFMLPlatform;
-import org.objectweb.asm.commons.Remapper;
+import customskinloader.Logger;
+import net.minecraftforge.fml.common.asm.transformers.deobf.FMLDeobfuscatingRemapper;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
 public class TransformerManager {
+    public static Logger logger = new Logger(new File("./CustomSkinLoader/ForgePlugin.log"));
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     public @interface TransformTarget {
         String className();
-
-        String methodNameSrg() default "";
 
         String[] methodNames() default {};
 
@@ -28,61 +27,19 @@ public class TransformerManager {
     }
 
     public interface IClassTransformer {
-        ClassNode transform(ClassNode cn);
+        void transform(ClassNode cn);
     }
 
     public interface IMethodTransformer {
-        MethodNode transform(ClassNode cn, MethodNode mn);
-    }
-
-    public static boolean isDevelopmentEnvironment = false;
-    /** If true, match {@link TransformTarget#methodNames} if {@link TransformTarget#methodNameSrg} fails to match. */
-    public static boolean useDeobfName = false;
-    private final static Remapper remapper = IFMLPlatform.FMLPlatformInitializer.getPlatform().getRemapper();
-
-    public static String mapClassName(String name) {
-        return remapper.mapType(name);
-    }
-
-    public static String mapFieldName(String owner, String name, String desc) {
-        return remapper.mapFieldName(owner, name, desc);
-    }
-
-    public static String mapMethodName(String owner, String name, String desc) {
-        return remapper.mapMethodName(owner, name, desc);
-    }
-
-    public static String mapMethodDesc(String desc) {
-        return remapper.mapMethodDesc(desc);
-    }
-
-    public static boolean checkClassName(String name, String deobfName) {
-        if (isDevelopmentEnvironment) {
-            return name.equals(deobfName);
-        } else {
-            return mapClassName(name).equals(deobfName);
-        }
-    }
-
-    public static boolean checkMethodName(String owner, String name, String desc, String srgName) {
-        if (isDevelopmentEnvironment) {
-            return mapMethodName(owner, srgName, desc).equals(name);
-        } else {
-            return mapMethodName(owner, name, desc).equals(srgName);
-        }
-    }
-
-    public static boolean checkMethodDesc(String desc, String deobfDesc)  {
-        if (isDevelopmentEnvironment) {
-            return desc.equals(deobfDesc);
-        } else {
-            return mapMethodDesc(desc).equals(deobfDesc);
-        }
+        void transform(ClassNode cn, MethodNode mn);
     }
 
     public Map<String, IClassTransformer> classMap = new HashMap<>();
-    public Map<String, Map<Supplier<String>, IMethodTransformer>> srgMap = new HashMap<>();
     public Map<String, Map<String, IMethodTransformer>> map = new HashMap<>();
+
+    public TransformerManager(IMethodTransformer... methodTransformers) {
+        this(new IClassTransformer[0], methodTransformers);
+    }
 
     public TransformerManager(IClassTransformer[] classTransformers, IMethodTransformer[] methodTransformers) {
         for (IClassTransformer t : classTransformers) {
@@ -100,9 +57,9 @@ public class TransformerManager {
     }
 
     private TransformTarget getTransformTarget(Class<?> cl) {
-        ForgeTweaker.logger.info("[CSL DEBUG] REGISTERING TRANSFORMER %s", cl.getName());
+        logger.info("[CSL DEBUG] REGISTERING TRANSFORMER %s", cl.getName());
         if (!cl.isAnnotationPresent(TransformTarget.class)) {
-            ForgeTweaker.logger.info("[CSL DEBUG] ERROR occurs while parsing Annotation");
+            logger.info("[CSL DEBUG] ERROR occurs while parsing Annotation.");
             return null;
         }
         return cl.getAnnotation(TransformTarget.class);
@@ -111,58 +68,43 @@ public class TransformerManager {
     private void addClassTransformer(String className, IClassTransformer transformer) {
         if (!classMap.containsKey(className)) {
             classMap.put(className, transformer);
-            ForgeTweaker.logger.info("[CSL DEBUG] REGISTERING CLASS %s", className);
+            logger.info("[CSL DEBUG] REGISTERING CLASS %s", className);
         }
     }
 
     private void addMethodTransformer(TransformTarget target, String className, IMethodTransformer transformer) {
-        if (!srgMap.containsKey(className)) {
-            srgMap.put(className, new HashMap<>());
-        }
-        if (!target.methodNameSrg().equals("")) {
-            // FMLDeobfRemapper has not been setup when this line being reached.
-            Supplier<String> mappedMethod = () -> (isDevelopmentEnvironment ? mapMethodName(className.replace(".", "/"), target.methodNameSrg(), target.desc()) : target.methodNameSrg()) + target.desc();
-            srgMap.get(className).put(mappedMethod, transformer);
-            ForgeTweaker.logger.info("[CSL DEBUG] REGISTERING SRG METHOD %s::%s", className, target.methodNameSrg() + target.desc());
-        }
         if (!map.containsKey(className))
-            map.put(className, new HashMap<>());
+            map.put(className, new HashMap<String, IMethodTransformer>());
         for (String methodName : target.methodNames()) {
             map.get(className).put(methodName + target.desc(), transformer);
-            ForgeTweaker.logger.info("[CSL DEBUG] REGISTERING METHOD %s::%s", className, methodName + target.desc());
+            logger.info("[CSL DEBUG] REGISTERING METHOD %s(%s)", className, methodName + target.desc());
         }
     }
 
-    public ClassNode transform(ClassNode classNode, String className) {
-        IClassTransformer transformer = classMap.get(className);
+    public ClassNode transform(ClassNode classNode) {
+        IClassTransformer transformer = classMap.get(FMLDeobfuscatingRemapper.INSTANCE.map(classNode.name).replace("/", "."));
         if (transformer != null) {
             try {
-                classNode = transformer.transform(classNode);
-                ForgeTweaker.logger.info("[CSL DEBUG] Successfully transformed class %s", className);
+                transformer.transform(classNode);
+                logger.info("[CSL DEBUG] Successfully transformed class %s", classNode.name);
             } catch (Exception e) {
-                ForgeTweaker.logger.warning("[CSL DEBUG] An error happened when transforming class %s", className);
-                ForgeTweaker.logger.warning(e);
+                logger.warning("[CSL DEBUG] An error happened when transforming class %s.", classNode.name);
+                logger.warning(e);
             }
         }
         return classNode;
     }
 
     public MethodNode transform(ClassNode classNode, MethodNode methodNode, String className, String methodName, String methodDesc) {
-        String methodTarget = methodName + methodDesc;
-        Map<Supplier<String>, IMethodTransformer> transSrgMap = srgMap.get(className);
-        IMethodTransformer transformer = transSrgMap == null ? null : transSrgMap.get(transSrgMap.keySet().stream().filter(s -> s.get().equals(methodTarget)).findFirst().orElse(null));
-
         Map<String, IMethodTransformer> transMap = map.get(className);
-        if (useDeobfName && transMap != null && transformer == null) {
-            transformer = transMap.get(methodTarget);
-        }
-        if (transformer != null) {
+        String methodTarget = methodName + methodDesc;
+        if (transMap != null && transMap.containsKey(methodTarget)) {
             try {
-                methodNode = transformer.transform(classNode, methodNode);
-                ForgeTweaker.logger.info("[CSL DEBUG] Successfully transformed method %s in class %s", methodName, className);
+                transMap.get(methodTarget).transform(classNode, methodNode);
+                logger.info("[CSL DEBUG] Successfully transformed method %s in class %s", methodName, className);
             } catch (Exception e) {
-                ForgeTweaker.logger.warning("[CSL DEBUG] An error happened when transforming method %s in class %s", methodTarget, className);
-                ForgeTweaker.logger.warning(e);
+                logger.warning("[CSL DEBUG] An error happened when transforming method %s in class %s.", methodTarget, className);
+                logger.warning(e);
             }
         }
         return methodNode;

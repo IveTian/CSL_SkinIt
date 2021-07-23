@@ -1,7 +1,6 @@
 package customskinloader.fake;
 
 import java.awt.image.BufferedImage;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import customskinloader.CustomSkinLoader;
@@ -13,14 +12,14 @@ import net.minecraft.client.renderer.texture.NativeImage;
 
 public class FakeSkinBuffer implements IImageBuffer {
     private int ratio = 1;
-    FakeImage image = null;
+    private FakeImage image = null;
 
     //parseUserSkin for 1.15+
-    public static NativeImage processLegacySkin(NativeImage image, Runnable processTask, Function<NativeImage, NativeImage> processLegacySkin) {
+    public static NativeImage processLegacySkin(NativeImage image, Runnable processTask) {
         if (processTask instanceof IImageBuffer) {
             return ((IImageBuffer) processTask).func_195786_a(image);
         }
-        return processLegacySkin.apply(image);
+        return new FakeSkinBuffer().func_195786_a(image);
     }
 
     //parseUserSkin for 1.13+
@@ -95,9 +94,6 @@ public class FakeSkinBuffer implements IImageBuffer {
         return image;
     }
 
-    /** Judge if the color is transparent or same with background */
-    static final Function<Integer, Predicate<Integer>> EQU_BG = bgColor -> getA(bgColor) == 0 ? (c) -> getA(c) == 0 : (c) -> c.equals(bgColor);
-
     /**
      * Judge the type of skin
      * Must be called after parseUserSkin
@@ -116,7 +112,8 @@ public class FakeSkinBuffer implements IImageBuffer {
          * which means it is Alex model.
          * Otherwise, it is Steve model.
          * */
-        Predicate<Integer> predicate = EQU_BG.apply(bgColor);
+        Predicate<Integer> predicate =
+                getA(bgColor) == 0 ? (c) -> getA(c) == 0 : (c) -> c == bgColor;
         for (int x = 54 * ratio; x <= 55 * ratio; ++x) {
             for (int y = 20 * ratio; y <= 31 * ratio; ++y) {
                 int color = image.getRGBA(x, y);
