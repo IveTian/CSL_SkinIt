@@ -1,0 +1,36 @@
+/**
+ * Gradle Script for Converting Mappings
+ * Designed for Converting Mappings.
+ * Converting Mappings: tsrg->srg
+ */
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.cadixdev:lorenz:0.5.7"
+    }
+}
+
+import org.cadixdev.lorenz.MappingSet
+import org.cadixdev.lorenz.io.srg.SrgWriter
+import org.cadixdev.lorenz.io.srg.tsrg.TSrgReader
+
+static void tsrg2srg(File tsrg, File srg) {
+    if (!tsrg.exists()) return
+    if (!srg.parentFile.exists()) srg.parentFile.mkdirs()
+    MappingSet.create().with { set ->
+        tsrg.withReader "UTF-8", { reader ->
+            new TSrgReader(reader).read(set)
+        }
+        srg.withWriter "UTF-8", { writer ->
+            new SrgWriter(writer).write(set)
+        }
+    }
+    srg.deleteOnExit()
+}
+
+ext {
+    tsrg2srg = this.&tsrg2srg
+}

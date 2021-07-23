@@ -1,0 +1,17 @@
+//Base Project
+include "Common"
+
+//Vanilla Base Project
+include "Vanilla"
+
+//Special Vanilla Edition
+include "Vanilla/1.8.9"
+include "Vanilla/1.12.2"
+include "Vanilla/1.16.5"
+include "Vanilla/1.17.1"
+
+//Universal Forge Edition for [1.8,)
+include "Forge"
+
+//Fabric Edition for [1.14,)
+include "Fabric"

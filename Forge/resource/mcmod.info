@@ -1,0 +1,10 @@
+[
+  {
+    "modid": "customskinloader",
+    "name": "CustomSkinLoader",
+    "description": "Custom Skin Loader for Minecraft. Skin It! Special Edition",
+    "version": "${modFullVersion}",
+    "url": "https://github.com/xfl03/MCCustomSkinLoader",
+    "authorList": ["xfl03", "JLChnToZ"]
+  }
+]
